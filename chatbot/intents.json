@@ -1,0 +1,89 @@
+{
+  "intents": [
+    {
+      "tag": "greeting",
+      "patterns": ["hi", "hello", "hey", "good morning", "good evening", "howdy", "what's up"],
+      "responses": ["Hello! Welcome to Hotel Whitmore Stays. How can I assist you today?", "Hi there! I'm Astra, your Hotel Whitmore Stays assistant. What can I help you with?"]
+    },
+    {
+      "tag": "goodbye",
+      "patterns": ["bye", "goodbye", "see you", "take care", "exit", "quit"],
+      "responses": ["Goodbye! Have a wonderful stay!", "See you soon! Feel free to come back if you need help."]
+    },
+    {
+      "tag": "rooms_available",
+      "patterns": ["what rooms are available", "show me available rooms", "which rooms can I book", "any rooms free", "room availability", "available rooms"],
+      "responses": ["You can browse all available rooms on our Browse Rooms page. We offer Standard, Deluxe, Suite, and Penthouse room types. Would you like to know more about any specific type?"]
+    },
+    {
+      "tag": "room_types",
+      "patterns": ["what types of rooms do you have", "room types", "tell me about your rooms", "what rooms do you offer", "room categories"],
+      "responses": ["We offer 4 room types:\n• **Standard** – Comfortable rooms starting at ₹1500/night\n• **Deluxe** – Premium rooms with sea view at ₹2500/night\n• **Suite** – Luxury suite with bathtub at ₹3500/night\n• **Penthouse** – Top-floor panoramic views at ₹8000/night"]
+    },
+    {
+      "tag": "booking",
+      "patterns": ["how do I book a room", "book a room", "make a reservation", "I want to book", "how to reserve", "reservation process"],
+      "responses": ["To book a room:\n1. Browse rooms and select one you like\n2. Click **Book Now**\n3. Choose your check-in and check-out dates\n4. Complete payment via Razorpay\nYou'll receive a confirmation email once booked!"]
+    },
+    {
+      "tag": "cancel_reservation",
+      "patterns": ["how to cancel", "cancel my booking", "cancel reservation", "I want to cancel", "cancellation policy"],
+      "responses": ["To cancel a reservation, go to **My Reservations** in your dashboard and click Cancel on the booking you wish to cancel. Note: only CONFIRMED reservations can be cancelled."]
+    },
+    {
+      "tag": "payment",
+      "patterns": ["how do I pay", "payment methods", "payment options", "how to pay", "accepted payments", "razorpay"],
+      "responses": ["We use **Razorpay** for secure payments. You can pay using:\n• Credit/Debit cards\n• UPI\n• Net Banking\n• Wallets\nPayments are processed securely and you'll receive an invoice by email."]
+    },
+    {
+      "tag": "check_in_out",
+      "patterns": ["check in time", "check out time", "when can I check in", "checkout time", "check-in process"],
+      "responses": ["Standard check-in is from **2:00 PM** and check-out is by **11:00 AM**. Early check-in or late check-out may be available on request — contact our front desk."]
+    },
+    {
+      "tag": "my_reservations",
+      "patterns": ["view my reservations", "my bookings", "see my reservations", "reservation history", "past bookings"],
+      "responses": ["You can view all your reservations under **My Reservations** in your customer dashboard. It shows status, dates, and payment info for each booking."]
+    },
+    {
+      "tag": "my_payments",
+      "patterns": ["view my payments", "payment history", "my invoices", "see my bills", "payment status"],
+      "responses": ["Your payment history is available under **Payments** in your dashboard. You can see all transactions, amounts, and statuses there."]
+    },
+    {
+      "tag": "profile",
+      "patterns": ["update my profile", "change my name", "edit profile", "update phone number", "my account"],
+      "responses": ["You can update your name and phone number under **Profile** in your dashboard. Click Edit, make your changes, and save."]
+    },
+    {
+      "tag": "amenities",
+      "patterns": ["what amenities", "hotel facilities", "what does the hotel offer", "hotel services", "facilities available"],
+      "responses": ["StayAura offers:\n• Free Wi-Fi in all rooms\n• 24/7 room service\n• Swimming pool & spa\n• Restaurant & bar\n• Concierge service\n• Airport transfers on request"]
+    },
+    {
+      "tag": "price",
+      "patterns": ["how much does it cost", "room price", "pricing", "rates", "how much per night", "cost of rooms"],
+      "responses": ["Our room rates:\n• Standard: ₹1,500/night\n• Deluxe: ₹2,500/night\n• Suite: ₹3,500/night\n• Penthouse: ₹8,000/night\nPrices may vary by season. Check the Browse Rooms page for live pricing."]
+    },
+    {
+      "tag": "contact",
+      "patterns": ["contact hotel", "how to contact", "phone number", "email hotel", "reach support", "customer support"],
+      "responses": ["You can reach Hotel Whitmore Stays support at:\n📧 support@hotelwhitmorestays.com\n📞 +91-XXXXX-XXXXX\nOr visit the front desk during your stay."]
+    },
+    {
+      "tag": "location",
+      "patterns": ["where is the hotel", "hotel location", "hotel address", "how to reach", "directions"],
+      "responses": ["StayAura is located in the heart of the city. Exact address and directions are available on our website's contact page. We also offer airport transfer services on request."]
+    },
+    {
+      "tag": "thanks",
+      "patterns": ["thank you", "thanks", "thank you so much", "great thanks", "appreciate it"],
+      "responses": ["You're welcome! Is there anything else I can help you with?", "Happy to help! Let me know if you need anything else."]
+    },
+    {
+      "tag": "fallback",
+      "patterns": [],
+      "responses": ["I'm not sure I understood that. Could you rephrase? I can help with room bookings, reservations, payments, check-in/out, and hotel information.", "I didn't quite catch that. Try asking about rooms, bookings, payments, or hotel amenities!"]
+    }
+  ]
+}

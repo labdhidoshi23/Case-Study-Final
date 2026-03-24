@@ -1,0 +1,673 @@
+================================================================
+        STAY AURA — HOTEL MANAGEMENT SYSTEM
+        Complete Project Explanation
+================================================================
+
+----------------------------------------------------------------
+PROJECT OVERVIEW
+----------------------------------------------------------------
+
+Stay Aura is a full-stack Hotel Management System built using a
+microservices architecture on the backend and a modern React
+single-page application on the frontend.
+
+The system supports four types of users:
+  - ADMIN       : Full system control
+  - MANAGER     : Staff, inventory, reservations, rooms
+  - RECEPTIONIST: Check-ins, check-outs, room and customer view
+  - CUSTOMER    : Browse rooms, make bookings, pay online
+
+The backend is split into 8 independent Spring Boot microservices,
+each responsible for one domain. The frontend is a React + TypeScript
+application that communicates with all services through a single
+API Gateway.
+
+================================================================
+BACKEND
+================================================================
+
+----------------------------------------------------------------
+TECHNOLOGY STACK (Backend)
+----------------------------------------------------------------
+
+  - Java 17
+  - Spring Boot 3.5.12
+  - Spring Cloud 2025.0.1
+  - Spring Cloud Gateway (API Gateway)
+  - Spring Cloud Netflix Eureka (Service Discovery)
+  - Spring Cloud OpenFeign (Inter-service communication)
+  - Spring Security + JWT (Authentication & Authorization)
+  - Spring Data JPA + MySQL (Relational data)
+  - Spring Data MongoDB (Reservation & Guest data)
+  - Razorpay Java SDK (Payment processing)
+  - Spring Mail + Thymeleaf (Email notifications)
+  - Lombok (Boilerplate reduction)
+  - Maven (Build tool)
+
+----------------------------------------------------------------
+DATABASE DESIGN
+----------------------------------------------------------------
+
+MySQL (single database: hotel_db)
+  Used by: user-service, room-service, payment-service, staff-service
+
+  Tables:
+    users       - id, name, email, password, role, phone
+    rooms       - roomId, type, price, availability, status, description, capacity, imageUrl
+    payments    - billId, reservationId, amount, status, paymentMethod, razorpayOrderId, razorpayPaymentId, createdAt
+    staff       - staffId, staffName, staffDept, staffStatus, salary
+    inventory   - itemId, itemName, category, quantity, unit, description
+
+MongoDB (database: reservation_db)
+  Used by: reservation-service
+
+  Collections:
+    reservations - reservationId, userId, roomId, checkIn, checkOut, status, guestId
+    guests       - guestId, guestFirstName, guestLastName, guestEmail, guestPhoneNo, reservationId
+
+  Reason for MongoDB: Reservations and guest data are document-oriented
+  and benefit from flexible schema and fast reads. MongoDB's auto-generated
+  ObjectId is used as the reservationId string.
+
+----------------------------------------------------------------
+SERVICE 1 — EUREKA SERVER (Port 8761)
+----------------------------------------------------------------
+
+What it does:
+  Acts as the service registry. Every microservice registers itself
+  here on startup with its name and IP address. Other services
+  discover each other by name (e.g., "room-service") instead of
+  hardcoded URLs.
+
+Key config:
+  - register-with-eureka: false (it doesn't register itself)
+  - fetch-registry: false
+  - @EnableEurekaServer annotation on main class
+
+----------------------------------------------------------------
+SERVICE 2 — API GATEWAY (Port 8080)
+----------------------------------------------------------------
+
+What it does:
+  Single entry point for all frontend requests. Routes incoming
+  requests to the correct microservice using load-balanced URLs
+  (lb://service-name). Also handles CORS and JWT validation globally.
+
+Routing rules:
+  /api/auth/**        → user-service
+  /api/users/**       → user-service
+  /api/rooms/**       → room-service
+  /api/reservations/** → reservation-service
+  /api/guests/**      → reservation-service
+  /api/payments/**    → payment-service
+  /api/staff/**       → staff-service
+  /api/inventory/**   → staff-service
+  /api/emails/**      → email-service
+
+JWT Auth Filter (JwtAuthFilter.java):
+  - Implements GlobalFilter and runs on every request
+  - Skips /api/auth/login and /api/auth/register (public paths)
+  - Reads the Authorization header, extracts the Bearer token
+  - Validates the JWT using HMAC-SHA256 with the shared secret key
+  - If valid, extracts userId and role from the token claims
+  - Forwards X-User-Id and X-User-Role as headers to downstream services
+  - Returns 401 Unauthorized if token is missing or invalid
+
+CORS config:
+  - Allows requests from http://localhost:5173 (Vite dev server)
+  - Allows all methods and headers
+  - allowCredentials: true
+
+----------------------------------------------------------------
+SERVICE 3 — USER SERVICE (Port 8081)
+----------------------------------------------------------------
+
+What it does:
+  Handles all user authentication and user management.
+
+Endpoints:
+  POST /api/auth/register  - Register a new user (name, email, password, role, phone)
+  POST /api/auth/login     - Login, returns JWT token + user details
+  GET  /api/auth/profile   - Get current user profile from JWT
+  GET  /api/users          - Get all users (ADMIN, MANAGER, RECEPTIONIST only)
+  GET  /api/users/{id}     - Get user by ID
+  PUT  /api/users/{id}     - Update user (ADMIN, MANAGER only)
+  DELETE /api/users/{id}   - Delete user (ADMIN, MANAGER only)
+
+Security:
+  - Passwords are hashed using BCrypt before storing
+  - JWT tokens are generated using HMAC-SHA256 with a 256-bit secret key
+  - Token contains: subject (userId), role claim, issued-at, expiration
+  - Spring Security is configured as stateless (no sessions)
+  - Role-based access: GET /api/users/** requires ADMIN/MANAGER/RECEPTIONIST,
+    write operations require ADMIN/MANAGER
+
+User roles (enum):
+  ADMIN, MANAGER, RECEPTIONIST, CUSTOMER
+
+JWT flow:
+  1. User sends email + password to /api/auth/login
+  2. UserService verifies password with BCrypt
+  3. JwtUtil generates a signed token with userId and role
+  4. Token is returned to frontend and stored in localStorage
+  5. Every subsequent request sends the token in Authorization header
+  6. API Gateway validates the token before forwarding the request
+
+----------------------------------------------------------------
+SERVICE 4 — ROOM SERVICE (Port 8082)
+----------------------------------------------------------------
+
+What it does:
+  Full CRUD management for hotel rooms.
+
+Endpoints:
+  GET    /api/rooms           - Get all rooms
+  GET    /api/rooms/available - Get only available rooms
+  GET    /api/rooms/{id}      - Get room by ID
+  POST   /api/rooms           - Create a new room (ADMIN only)
+  PUT    /api/rooms/{id}      - Update room details
+  DELETE /api/rooms/{id}      - Delete a room
+  PATCH  /api/rooms/{id}/availability?available=true/false - Update availability
+
+Room entity fields:
+  - roomId (auto-generated)
+  - type: enum (STANDARD, DELUXE, SUITE, PENTHOUSE)
+  - price: BigDecimal
+  - availability: boolean (true = can be booked)
+  - status: enum (AVAILABLE, OCCUPIED, MAINTENANCE, RESERVED)
+  - description, capacity, imageUrl
+
+How availability works:
+  When a reservation is created, reservation-service calls room-service
+  via Feign client to set availability = false. When a reservation is
+  cancelled or checked out, availability is set back to true.
+
+----------------------------------------------------------------
+SERVICE 5 — RESERVATION SERVICE (Port 8083)
+----------------------------------------------------------------
+
+What it does:
+  Manages all hotel reservations and guest records. Uses MongoDB
+  for flexible document storage.
+
+Endpoints:
+  POST /api/reservations              - Create reservation
+  GET  /api/reservations              - Get all reservations
+  GET  /api/reservations/{id}         - Get by ID
+  GET  /api/reservations/user/{userId} - Get reservations for a specific user
+  PUT  /api/reservations/{id}/cancel  - Cancel reservation
+  PUT  /api/reservations/{id}/check-in  - Mark as CHECKED_IN
+  PUT  /api/reservations/{id}/check-out - Mark as CHECKED_OUT
+
+  POST /api/guests                    - Create guest record
+  GET  /api/guests                    - Get all guests
+  GET  /api/guests/{id}               - Get guest by ID
+  GET  /api/guests/reservation/{id}   - Get guests for a reservation
+
+Reservation statuses:
+  PENDING → CONFIRMED → CHECKED_IN → CHECKED_OUT
+  Any status → CANCELLED
+
+Inter-service communication (Feign Clients):
+  RoomClient:
+    - Calls PATCH /api/rooms/{id}/availability on room-service
+    - Called when reservation is created (set false) or cancelled/checked-out (set true)
+
+  EmailClient:
+    - Calls POST /api/emails/reservation on email-service
+    - Called after a reservation is successfully created
+    - Sends confirmation email to the customer's email address
+    - Wrapped in try/catch so email failure never breaks the booking
+
+Guest management:
+  Guests are stored separately from users. A guest record contains
+  the physical guest's name, email, phone, and is linked to a
+  reservationId. This allows walk-in guests who are not system users.
+
+----------------------------------------------------------------
+SERVICE 6 — PAYMENT SERVICE (Port 8084)
+----------------------------------------------------------------
+
+What it does:
+  Handles payment processing using Razorpay payment gateway.
+
+Endpoints:
+  POST /api/payments/order      - Create a Razorpay order
+  POST /api/payments/verify     - Verify payment signature
+  GET  /api/payments            - Get all payments
+  GET  /api/payments/{id}       - Get payment by ID
+  GET  /api/payments/{id}/invoice - Get invoice details
+  GET  /api/payments/reservation/{id} - Get payments for a reservation
+
+Payment flow:
+  1. Frontend calls POST /api/payments/order with reservationId and amount
+  2. PaymentService creates a Razorpay order via Razorpay Java SDK
+  3. A Payment record is saved in MySQL with status PENDING
+  4. Razorpay order ID is returned to frontend
+  5. Frontend opens Razorpay checkout modal (loaded via script tag)
+  6. Customer completes payment on Razorpay's UI
+  7. Razorpay returns: razorpayOrderId, razorpayPaymentId, razorpaySignature
+  8. Frontend calls POST /api/payments/verify with these three values
+  9. Backend verifies signature using HMAC-SHA256:
+       payload = razorpayOrderId + "|" + razorpayPaymentId
+       expected = HMAC-SHA256(payload, razorpayKeySecret)
+       if expected == razorpaySignature → SUCCESS, else FAILED
+  10. Payment status updated in DB
+  11. On SUCCESS, EmailClient sends invoice email to customer
+
+Payment statuses:
+  PENDING → SUCCESS or FAILED (or REFUNDED)
+
+----------------------------------------------------------------
+SERVICE 7 — STAFF SERVICE (Port 8085)
+----------------------------------------------------------------
+
+What it does:
+  Manages hotel staff members and inventory items.
+
+Endpoints:
+  POST   /api/staff         - Add staff member
+  GET    /api/staff         - Get all staff
+  GET    /api/staff/{id}    - Get staff by ID
+  PUT    /api/staff/{id}    - Update staff
+  DELETE /api/staff/{id}    - Delete staff
+
+  POST   /api/inventory     - Add inventory item
+  GET    /api/inventory     - Get all items
+  GET    /api/inventory/{id} - Get item by ID
+  PUT    /api/inventory/{id} - Update item
+  DELETE /api/inventory/{id} - Delete item
+
+Staff fields:
+  staffId, staffName, staffDept, staffStatus (ACTIVE/INACTIVE/ON_LEAVE), salary
+
+Inventory fields:
+  itemId, itemName, category, quantity, unit, description
+
+----------------------------------------------------------------
+SERVICE 8 — EMAIL SERVICE (Port 8086)
+----------------------------------------------------------------
+
+What it does:
+  Sends HTML emails using Gmail SMTP and Thymeleaf templates.
+  Called internally by other services via Feign clients — not
+  directly exposed to the frontend.
+
+Endpoints:
+  POST /api/emails/reservation - Send reservation confirmation email
+  POST /api/emails/invoice     - Send payment invoice email
+
+Templates (Thymeleaf HTML):
+  reservation-confirmation.html
+    - Variables: guestName, reservationId
+    - Subject: "Reservation Confirmed - {reservationId}"
+
+  invoice.html
+    - Variables: billId, reservationId, amount
+    - Subject: "Invoice - Bill #{billId}"
+
+SMTP config:
+  - Host: smtp.gmail.com, Port: 587
+  - STARTTLS enabled
+  - Gmail app password used for authentication
+
+----------------------------------------------------------------
+HOW MICROSERVICES COMMUNICATE
+----------------------------------------------------------------
+
+  Frontend → API Gateway (HTTP REST, JWT in header)
+  API Gateway → Any Service (HTTP, load-balanced via Eureka)
+  Reservation Service → Room Service (Feign, update availability)
+  Reservation Service → Email Service (Feign, send confirmation)
+  Payment Service → Email Service (Feign, send invoice)
+
+  All services register with Eureka on startup.
+  Feign clients use service names (e.g., "room-service") and
+  Eureka resolves the actual IP and port automatically.
+
+================================================================
+FRONTEND
+================================================================
+
+----------------------------------------------------------------
+TECHNOLOGY STACK (Frontend)
+----------------------------------------------------------------
+
+  - React 18 + TypeScript
+  - Vite (build tool, dev server on port 5173)
+  - Redux Toolkit (global state management)
+  - React Router v6 (client-side routing)
+  - Axios (HTTP client with interceptors)
+  - Tailwind CSS (utility-first styling)
+  - Framer Motion (animations)
+  - Lucide React (icons)
+  - Razorpay Checkout JS (payment UI)
+  - Shadcn/ui (component library)
+
+----------------------------------------------------------------
+PROJECT STRUCTURE (Frontend)
+----------------------------------------------------------------
+
+  src/
+  ├── api/
+  │   ├── axios.ts       - Axios instance, base URL, JWT interceptor
+  │   └── services.ts    - All API call functions grouped by service
+  ├── store/
+  │   └── slices/
+  │       └── authSlice.ts - Redux slice for user auth state
+  ├── hooks/
+  │   └── useRazorpay.ts - Custom hook for Razorpay payment flow
+  ├── layouts/
+  │   ├── MainLayout.tsx       - Public page layout
+  │   └── DashboardLayout.tsx  - Role-based sidebar layouts
+  ├── pages/
+  │   ├── auth/          - Login, Register
+  │   ├── customer/      - Dashboard, BrowseRooms, RoomDetails, BookRoom,
+  │   │                    MyReservations, Payments, Profile, Notifications
+  │   ├── staff/         - StaffDashboard, StaffReservations, StaffRooms,
+  │   │                    StaffCustomers
+  │   └── admin/         - AdminDashboard, AdminUsers, AdminRooms,
+  │                        AdminReservations, AdminPayments, AdminStaff,
+  │                        AdminInventory, AdminReports, AdminNotifications
+  └── App.tsx            - Route definitions + user rehydration on load
+
+----------------------------------------------------------------
+AXIOS SETUP
+----------------------------------------------------------------
+
+  Base URL: http://localhost:8080/api (API Gateway)
+
+  Request interceptor:
+    - Reads JWT token from localStorage
+    - Attaches it as "Authorization: Bearer {token}" header
+    - Applied automatically to every API call
+
+  Response interceptor:
+    - On 401 Unauthorized: clears localStorage and redirects to /login
+
+----------------------------------------------------------------
+REDUX AUTH STATE
+----------------------------------------------------------------
+
+  State shape:
+    user: { id, username, email, role, fullName } | null
+    token: string | null
+    isAuthenticated: boolean
+    loading: boolean
+
+  Actions:
+    loginSuccess  - Sets user + token, saves token to localStorage
+    logout        - Clears user + token, removes from localStorage
+    setUser       - Used for rehydration on page refresh
+
+  Rehydration (App.tsx):
+    On every app load, if a token exists in localStorage,
+    the app calls GET /api/auth/profile to fetch the current user
+    and dispatches setUser to restore the Redux state.
+    This prevents losing login state on page refresh.
+
+----------------------------------------------------------------
+ROUTING & ROLE-BASED ACCESS
+----------------------------------------------------------------
+
+  Public routes:
+    /           - Landing page
+    /login      - Login page
+    /register   - Register page
+
+  Customer routes (/customer/*):
+    dashboard, rooms, rooms/:id, book/:id,
+    reservations, payments, notifications, profile
+
+  Staff routes (/staff/*):
+    dashboard, reservations, rooms, customers,
+    staff (MANAGER only), inventory (MANAGER only), notifications
+
+  Admin routes (/admin/*):
+    dashboard, users, rooms, reservations, payments,
+    staff, inventory, reports, notifications
+
+  Role-based sidebar:
+    - CustomerLayout: customer links only
+    - StaffLayout: base staff links + Staff/Inventory for MANAGER role
+    - AdminLayout: all admin links
+
+  Login redirect:
+    CUSTOMER     → /customer/dashboard
+    RECEPTIONIST → /staff/dashboard
+    MANAGER      → /staff/dashboard
+    ADMIN        → /admin/dashboard
+
+----------------------------------------------------------------
+PAGE-BY-PAGE EXPLANATION
+----------------------------------------------------------------
+
+AUTH PAGES
+
+  Login.tsx
+    - Email + password form
+    - Calls POST /api/auth/login
+    - On success: stores token, dispatches loginSuccess, redirects by role
+    - Shows error message on invalid credentials
+
+  Register.tsx
+    - Fields: name, email, phone, password, role (dropdown)
+    - Calls POST /api/auth/register
+    - Redirects to login on success
+
+---
+
+CUSTOMER PAGES
+
+  CustomerDashboard.tsx
+    - Fetches reservations for logged-in user
+    - Fetches all payments and filters to user's reservations
+    - Shows real stats: active reservations, rooms visited, total spent, total bookings
+    - Shows last 5 reservations in a table
+
+  BrowseRooms.tsx
+    - Fetches all rooms from GET /api/rooms
+    - Displays room cards with type, price, capacity, availability
+    - Fallback image if no imageUrl provided
+    - Links to RoomDetails page
+
+  RoomDetails.tsx
+    - Fetches single room by ID from GET /api/rooms/{id}
+    - Shows full room details
+    - "Book Now" button disabled if room is not available
+
+  BookRoom.tsx
+    - 3-step booking form: Dates → Guest Info → Review
+    - Step 1: Check-in / check-out date pickers, calculates nights and total
+    - Step 2: Guest first name, last name, email, phone
+    - Step 3: Review summary with total amount
+    - On confirm: calls POST /api/reservations (with userEmail/userName for email)
+                  then calls POST /api/guests to create guest record
+    - Redirects to /customer/reservations on success
+
+  MyReservations.tsx
+    - Fetches reservations by userId from GET /api/reservations/user/{id}
+    - Shows reservation cards with status badges
+    - Cancel button for CONFIRMED reservations (calls PUT /api/reservations/{id}/cancel)
+
+  Payments.tsx
+    - Fetches all payments and user's reservations
+    - Shows "Pending Payments" section: CONFIRMED reservations with no SUCCESS payment
+    - Fetches room price for each unpaid reservation
+    - Calculates total = price × nights and shows it
+    - "Pay Now" opens Razorpay checkout with real amount
+    - Payment history table with status, amount, method, date
+    - "View Invoice" button for SUCCESS payments
+
+  Profile.tsx
+    - Shows current user's name, email, role from Redux state
+    - Name and phone are editable
+    - Email is read-only (displayed but cannot be changed)
+    - Save calls PUT /api/users/{id} and updates Redux state
+
+  Notifications.tsx
+    - Clean empty state (no notification backend service)
+
+---
+
+STAFF PAGES
+
+  StaffDashboard.tsx
+    - Fetches all reservations and available rooms
+    - Today's check-ins: CONFIRMED reservations where checkIn = today
+    - Today's check-outs: CHECKED_IN reservations where checkOut = today
+    - Guests in-house: count of CHECKED_IN reservations
+    - Available rooms: count from GET /api/rooms/available
+    - Today's activity list shows real reservation IDs and room numbers
+
+  StaffReservations.tsx
+    - Fetches all reservations
+    - Check In button: calls PUT /api/reservations/{id}/check-in
+    - Check Out button: calls PUT /api/reservations/{id}/check-out
+
+  StaffRooms.tsx
+    - Fetches all rooms, read-only view
+
+  StaffCustomers.tsx
+    - Fetches all users, filters to CUSTOMER role only
+    - Shows name, email, phone
+
+---
+
+ADMIN PAGES
+
+  AdminDashboard.tsx
+    - Fetches counts from all services in parallel
+    - Total users (userApi.getAll().length)
+    - Total rooms (roomApi.getAll().length)
+    - Total reservations (reservationApi.getAll().length)
+    - Total revenue (sum of SUCCESS payment amounts)
+
+  AdminUsers.tsx
+    - Fetches all users from GET /api/users
+    - Edit modal: change name and role
+    - Delete with confirmation dialog
+
+  AdminRooms.tsx
+    - Full CRUD: Add, Edit, Delete rooms
+    - Type dropdown with all 4 enum values
+    - Status dropdown
+
+  AdminReservations.tsx
+    - Fetches all reservations
+    - Cancel action available
+
+  AdminPayments.tsx
+    - Fetches all payments
+    - Shows billId, reservationId, amount, method, Razorpay order ID, date, status
+
+  AdminStaff.tsx
+    - Full CRUD for staff members
+    - Add/Edit modal: name, department, status, salary
+    - Status badge color-coded (green/amber/red)
+
+  AdminInventory.tsx
+    - Full CRUD for inventory items
+    - Add/Edit modal: name, category, quantity, unit, description
+
+  AdminReports.tsx
+    - Placeholder UI (no analytics backend endpoint)
+
+  AdminNotifications.tsx
+    - Clean empty state (no notification backend service)
+
+----------------------------------------------------------------
+RAZORPAY PAYMENT FLOW (Frontend)
+----------------------------------------------------------------
+
+  useRazorpay.ts custom hook:
+
+  1. Dynamically loads Razorpay checkout script from CDN
+  2. Calls POST /api/payments/order with reservationId and amount
+  3. Receives razorpayOrderId from backend
+  4. Opens Razorpay modal with:
+       - key: VITE_RAZORPAY_KEY_ID from .env
+       - order_id: from backend
+       - prefill: customer name and email
+  5. On payment success, Razorpay calls the handler with:
+       razorpay_order_id, razorpay_payment_id, razorpay_signature
+  6. Calls POST /api/payments/verify with these values + customerEmail
+  7. Backend verifies signature and updates payment status
+  8. On success: refreshes payment data in UI
+  9. On dismiss or failure: shows error message
+
+----------------------------------------------------------------
+API SERVICES (services.ts)
+----------------------------------------------------------------
+
+  authApi    - login, register, getProfile
+  userApi    - getAll, getById, update, delete
+  roomApi    - getAll, getAvailable, getById, create, update, delete, updateAvailability
+  reservationApi - getAll, getById, getByUser, create, cancel, checkIn, checkOut
+  guestApi   - getAll, getById, create, getByReservation
+  paymentApi - getAll, getById, getInvoice, getByReservation, createOrder, verifyPayment
+  staffApi   - getAll, getById, create, update, delete
+  inventoryApi - getAll, getById, create, update, delete
+
+================================================================
+KEY DESIGN DECISIONS
+================================================================
+
+1. Single MySQL database (hotel_db) for all relational services
+   instead of one DB per service — simplifies local development
+   while keeping services independently deployable.
+
+2. MongoDB for reservations — document model fits well for
+   reservations that have varying guest data attached.
+
+3. API Gateway as single entry point — frontend only needs to
+   know one URL (localhost:8080). JWT validation happens once
+   at the gateway, not repeated in every service.
+
+4. Feign clients for inter-service calls — declarative HTTP
+   clients that integrate with Eureka for service discovery.
+   No hardcoded URLs between services.
+
+5. Email calls wrapped in try/catch — email failure never
+   breaks the main booking or payment flow.
+
+6. Redux for auth state — persists user across page navigation,
+   rehydrated from JWT on page refresh so users stay logged in.
+
+7. Role-based sidebar — MANAGER sees Staff and Inventory links
+   that RECEPTIONIST does not, using the same /staff/* layout.
+
+================================================================
+PORT SUMMARY
+================================================================
+
+  Eureka Server      : 8761
+  API Gateway        : 8080
+  User Service       : 8081
+  Room Service       : 8082
+  Reservation Service: 8083
+  Payment Service    : 8084
+  Staff Service      : 8085
+  Email Service      : 8086
+  Frontend (Vite)    : 5173
+
+================================================================
+HOW TO RUN THE PROJECT
+================================================================
+
+Backend (start in this order):
+  1. Start MySQL and MongoDB locally
+  2. Run eureka-server
+  3. Run all other services (any order after Eureka is up):
+     user-service, room-service, reservation-service,
+     payment-service, staff-service, email-service, apigateway
+
+Frontend:
+  1. cd frontend/stay-aura-suite-main
+  2. npm install
+  3. Add real Razorpay test keys to .env:
+       VITE_RAZORPAY_KEY_ID=rzp_test_xxxxx
+  4. npm run dev
+  5. Open http://localhost:5173
+
+================================================================

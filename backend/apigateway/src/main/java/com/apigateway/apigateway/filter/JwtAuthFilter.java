@@ -8,6 +8,7 @@ import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
@@ -23,13 +24,21 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
     private String jwtSecret;
 
     private static final List<String> PUBLIC_PATHS = List.of(
-            "/api/auth/login", "/api/auth/register"
+            "/api/auth/login", "/api/auth/register", "/api/auth/profile"
     );
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
+        HttpMethod method = exchange.getRequest().getMethod();
+
+        // Always allow public auth paths
         if (PUBLIC_PATHS.stream().anyMatch(path::startsWith)) {
+            return chain.filter(exchange);
+        }
+
+        // Allow GET requests to /api/rooms/** without token (public browsing)
+        if (HttpMethod.GET.equals(method) && path.startsWith("/api/rooms")) {
             return chain.filter(exchange);
         }
 

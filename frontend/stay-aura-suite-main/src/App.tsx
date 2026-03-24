@@ -9,6 +9,7 @@ import { setUser } from "@/store/slices/authSlice";
 import { authApi } from "@/api/services";
 
 import { MainLayout } from "@/layouts/MainLayout";
+import ChatWidget from "@/components/ChatWidget";
 import { CustomerLayout, StaffLayout, AdminLayout } from "@/layouts/DashboardLayout";
 
 import Index from "./pages/Index";
@@ -66,6 +67,8 @@ const AppRoutes = () => {
   }, []);
 
   return (
+    <>
+    <ChatWidget />
     <Routes>
           {/* Public routes */}
           <Route element={<MainLayout />}>
@@ -114,6 +117,7 @@ const AppRoutes = () => {
 
           <Route path="*" element={<NotFound />} />
         </Routes>
+    </>  
   );
 };
 

@@ -46,7 +46,7 @@ export const useRazorpay = () => {
         amount: options.amount * 100,
         currency: 'INR',
         order_id: data.razorpayOrderId,
-        name: 'Stay Aura Hotel',
+        name: 'Hotel Whitmore Stays',
         description: `Reservation #${options.reservationId}`,
         prefill: {
           name: options.customerName,

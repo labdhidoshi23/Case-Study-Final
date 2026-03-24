@@ -3,9 +3,31 @@ import { motion } from "framer-motion";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Users, BedDouble, CalendarCheck, CreditCard } from "lucide-react";
 import { userApi, roomApi, reservationApi, paymentApi } from "@/api/services";
+import {
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from "recharts";
+
+function buildMonthlyRevenue(payments: any[]) {
+  const map: Record<string, number> = {};
+  payments.filter(p => p.status === "SUCCESS").forEach(p => {
+    const d = new Date(p.createdAt);
+    if (isNaN(d.getTime())) return;
+    const key = d.toLocaleString("default", { month: "short" });
+    map[key] = (map[key] || 0) + Number(p.amount);
+  });
+  return Object.entries(map).map(([month, revenue]) => ({ month, revenue }));
+}
+
+function buildBookingsByStatus(reservations: any[]) {
+  const map: Record<string, number> = {};
+  reservations.forEach(r => { map[r.status] = (map[r.status] || 0) + 1; });
+  return Object.entries(map).map(([status, count]) => ({ status, count }));
+}
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({ users: 0, rooms: 0, reservations: 0, revenue: 0 });
+  const [revenueData, setRevenueData] = useState<{ month: string; revenue: number }[]>([]);
+  const [bookingData, setBookingData] = useState<{ status: string; count: number }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,6 +46,8 @@ export default function AdminDashboard() {
         reservations: resRes.data.length,
         revenue,
       });
+      setRevenueData(buildMonthlyRevenue(payRes.data));
+      setBookingData(buildBookingsByStatus(resRes.data));
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
@@ -53,16 +77,46 @@ export default function AdminDashboard() {
 
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="bg-card rounded-2xl shadow-soft p-6">
-          <h3 className="text-lg font-display font-semibold text-foreground mb-2">Revenue Trend</h3>
-          <div className="h-64 flex items-center justify-center bg-muted/50 rounded-xl">
-            <p className="text-sm font-body text-muted-foreground">Chart coming soon</p>
-          </div>
+          <h3 className="text-lg font-display font-semibold text-foreground mb-4">Revenue Trend</h3>
+          {revenueData.length === 0 ? (
+            <div className="h-64 flex items-center justify-center bg-muted/50 rounded-xl">
+              <p className="text-sm font-body text-muted-foreground">No payment data yet</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={256}>
+              <AreaChart data={revenueData}>
+                <defs>
+                  <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#d4a853" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#d4a853" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} tickFormatter={v => `₹${v}`} />
+                <Tooltip formatter={(v: number) => [`₹${v.toLocaleString()}`, "Revenue"]} />
+                <Area type="monotone" dataKey="revenue" stroke="#d4a853" fill="url(#revenueGrad)" strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </div>
         <div className="bg-card rounded-2xl shadow-soft p-6">
-          <h3 className="text-lg font-display font-semibold text-foreground mb-2">Booking Analytics</h3>
-          <div className="h-64 flex items-center justify-center bg-muted/50 rounded-xl">
-            <p className="text-sm font-body text-muted-foreground">Chart coming soon</p>
-          </div>
+          <h3 className="text-lg font-display font-semibold text-foreground mb-4">Booking Analytics</h3>
+          {bookingData.length === 0 ? (
+            <div className="h-64 flex items-center justify-center bg-muted/50 rounded-xl">
+              <p className="text-sm font-body text-muted-foreground">No reservation data yet</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={256}>
+              <BarChart data={bookingData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="status" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                <Tooltip formatter={(v: number) => [v, "Bookings"]} />
+                <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
     </div>

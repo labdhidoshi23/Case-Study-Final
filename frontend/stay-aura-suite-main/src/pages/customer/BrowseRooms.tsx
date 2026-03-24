@@ -4,11 +4,14 @@ import { Link } from "react-router-dom";
 import { SectionHeader } from "@/components/SectionHeader";
 import { roomApi } from "@/api/services";
 import { Users, Wifi, Coffee, Car } from "lucide-react";
-import room1 from "@/assets/room-1.jpg";
-import room2 from "@/assets/room-2.jpg";
-import room3 from "@/assets/room-3.jpg";
 
-const fallbackImages = [room1, room2, room3];
+const roomImage: Record<string, string> = {
+  STANDARD: "/room-images/standard.jpg",
+  DELUXE: "/room-images/deluxe.jpg",
+  SUITE: "/room-images/suite.jpg",
+  PENTHOUSE: "/room-images/penthouse.jpg",
+};
+
 const amenityIcons: Record<string, any> = { "Wi-Fi": Wifi, "Breakfast": Coffee, "Parking": Car };
 
 interface Room {
@@ -48,10 +51,10 @@ export default function BrowseRooms() {
           >
             <div className="relative overflow-hidden aspect-[4/3]">
               <img
-                src={room.imageUrl || fallbackImages[i % 3]}
+                src={room.imageUrl || roomImage[room.type]}
                 alt={room.type}
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                onError={(e) => { (e.target as HTMLImageElement).src = fallbackImages[i % 3]; }}
+                onError={(e) => { (e.target as HTMLImageElement).src = roomImage[room.type]; }}
               />
               <div className="absolute top-4 left-4 flex gap-2">
                 <span className="px-2.5 py-1 text-xs font-body font-medium bg-accent text-accent-foreground rounded-full">{room.type}</span>

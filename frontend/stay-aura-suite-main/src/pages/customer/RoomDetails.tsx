@@ -3,7 +3,13 @@ import { useParams, Link } from "react-router-dom";
 import { SectionHeader } from "@/components/SectionHeader";
 import { roomApi } from "@/api/services";
 import { Users } from "lucide-react";
-import room1 from "@/assets/room-1.jpg";
+
+const roomImage: Record<string, string> = {
+  STANDARD: "/room-images/standard.jpg",
+  DELUXE: "/room-images/deluxe.jpg",
+  SUITE: "/room-images/suite.jpg",
+  PENTHOUSE: "/room-images/penthouse.jpg",
+};
 
 interface Room {
   roomId: number;
@@ -39,10 +45,10 @@ export default function RoomDetails() {
       <div className="grid lg:grid-cols-2 gap-8">
         <div className="rounded-2xl overflow-hidden shadow-card">
           <img
-            src={room.imageUrl || room1}
+            src={room.imageUrl || roomImage[room.type]}
             alt={room.type}
             className="w-full h-80 object-cover"
-            onError={(e) => { (e.target as HTMLImageElement).src = room1; }}
+            onError={(e) => { (e.target as HTMLImageElement).src = roomImage[room.type]; }}
           />
         </div>
         <div className="space-y-6">

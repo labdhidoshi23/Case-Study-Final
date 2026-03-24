@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Invoice</title></head>
+<body style="font-family: Arial, sans-serif; background:#f4f4f4; padding:20px;">
+  <div style="max-width:600px; margin:auto; background:#fff; padding:30px; border-radius:8px;">
+    <h2 style="color:#2c3e50;">Payment Invoice</h2>
+    <table style="width:100%; border-collapse:collapse;">
+      <tr><td><strong>Bill ID:</strong></td><td th:text="${billId}">-</td></tr>
+      <tr><td><strong>Reservation ID:</strong></td><td th:text="${reservationId}">-</td></tr>
+      <tr><td><strong>Amount Paid:</strong></td><td>₹<span th:text="${amount}">0</span></td></tr>
+    </table>
+    <p style="margin-top:20px;">Thank you for your payment!</p>
+    <hr/>
+    <p style="font-size:12px; color:#888;">Stay Aura Hotel Management System</p>
+  </div>
+</body>
+</html>

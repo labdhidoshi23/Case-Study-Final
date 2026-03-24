@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { SectionHeader } from "@/components/SectionHeader";
 import { roomApi } from "@/api/services";
-import room1 from "@/assets/room-1.jpg";
-import room2 from "@/assets/room-2.jpg";
-import room3 from "@/assets/room-3.jpg";
 
-const fallbackImages = [room1, room2, room3];
+const roomImage: Record<string, string> = {
+  STANDARD: "/room-images/standard.jpg",
+  DELUXE: "/room-images/deluxe.jpg",
+  SUITE: "/room-images/suite.jpg",
+  PENTHOUSE: "/room-images/penthouse.jpg",
+};
+
 
 interface Room {
   roomId: number;
@@ -113,11 +116,10 @@ export default function AdminRooms() {
         <p className="text-muted-foreground text-sm">Loading rooms...</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {rooms.map((r, i) => (
+          {rooms.map((r) => (
             <div key={r.roomId} className="bg-card rounded-2xl shadow-soft overflow-hidden hover:shadow-card transition-all">
-              <img src={r.imageUrl || fallbackImages[i % 3]} alt={r.type}
-                className="w-full h-48 object-cover"
-                onError={(e) => { (e.target as HTMLImageElement).src = fallbackImages[i % 3]; }} />
+              <img src={roomImage[r.type] || "/room-images/deluxe.jpg"} alt={r.type}
+                className="w-full h-48 object-cover" />
               <div className="p-5">
                 <div className="flex items-start justify-between">
                   <h3 className="font-display font-semibold text-foreground">{r.type}</h3>

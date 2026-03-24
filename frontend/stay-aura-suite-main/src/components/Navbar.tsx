@@ -12,7 +12,7 @@ export function Navbar() {
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isHome ? "bg-transparent" : "bg-primary/95 backdrop-blur-sm"}`}>
       <div className="container mx-auto px-6 py-4 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
-          <span className="text-2xl font-display font-bold text-accent">StaySphere</span>
+          <span className="text-2xl font-display font-bold text-accent">Hotel Whitmore Stays</span>
         </Link>
 
         {/* Desktop */}

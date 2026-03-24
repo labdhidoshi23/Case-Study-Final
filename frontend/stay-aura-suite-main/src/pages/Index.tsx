@@ -1,18 +1,53 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import heroImg from "@/assets/hero-hotel.jpg";
-import room1 from "@/assets/room-1.jpg";
-import room2 from "@/assets/room-2.jpg";
-import room3 from "@/assets/room-3.jpg";
 import { MapPlaceholder } from "@/components/MapPlaceholder";
+import { roomApi } from "@/api/services";
+import { Users } from "lucide-react";
 
-const rooms = [
-  { id: 1, name: "Ocean View Suite", price: 450, image: room1, type: "Suite" },
-  { id: 2, name: "Penthouse Royal", price: 850, image: room2, type: "Penthouse" },
-  { id: 3, name: "Mountain Retreat", price: 350, image: room3, type: "Deluxe" },
-];
+const roomImage: Record<string, string> = {
+  STANDARD: "/room-images/standard.jpg",
+  DELUXE: "/room-images/deluxe.jpg",
+  SUITE: "/room-images/suite.jpg",
+  PENTHOUSE: "/room-images/penthouse.jpg",
+};
+
+const typeLabel: Record<string, string> = {
+  STANDARD: "Standard Room",
+  DELUXE: "Deluxe Room",
+  SUITE: "Suite",
+  PENTHOUSE: "Penthouse",
+};
+
+const typeDesc: Record<string, string> = {
+  STANDARD: "Comfortable and well-appointed room for a relaxing stay.",
+  DELUXE: "Spacious deluxe room with premium furnishings and amenities.",
+  SUITE: "Elegant suite offering a luxurious living and sleeping area.",
+  PENTHOUSE: "Exclusive top-floor penthouse with panoramic views.",
+};
+
+interface Room {
+  roomId: number;
+  type: string;
+  price: number;
+  availability: boolean;
+  imageUrl?: string;
+  description?: string;
+  capacity?: number;
+}
 
 export default function Index() {
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    roomApi.getAll()
+      .then(r => setRooms((r.data as Room[]).slice(0, 3)))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <div>
       {/* Hero */}
@@ -35,7 +70,7 @@ export default function Index() {
                 transition={{ delay: 0.3 }}
                 className="text-accent font-body text-sm uppercase tracking-[0.2em] mb-4"
               >
-                Welcome to StaySphere
+                Welcome to Hotel Whitmore Stays
               </motion.p>
               <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold leading-tight" style={{ color: "hsl(0 0% 98%)" }}>
                 Luxury Stays.{" "}
@@ -45,17 +80,13 @@ export default function Index() {
                 Book rooms, manage reservations, and experience smart hospitality.
               </p>
               <div className="mt-10 flex flex-wrap gap-4">
-                <Link
-                  to="/login"
-                  className="px-8 py-3.5 bg-accent text-accent-foreground font-body font-medium rounded-lg shadow-gold hover:shadow-elevated transition-all duration-300 hover:scale-[1.02]"
-                >
+                <Link to="/login"
+                  className="px-8 py-3.5 bg-accent text-accent-foreground font-body font-medium rounded-lg shadow-gold hover:shadow-elevated transition-all duration-300 hover:scale-[1.02]">
                   Book Now
                 </Link>
-                <Link
-                  to="/rooms"
+                <Link to="/login"
                   className="px-8 py-3.5 font-body font-medium rounded-lg border transition-all duration-300 hover:scale-[1.02]"
-                  style={{ borderColor: "hsl(0 0% 100% / 0.25)", color: "hsl(0 0% 90%)" }}
-                >
+                  style={{ borderColor: "hsl(0 0% 100% / 0.25)", color: "hsl(0 0% 90%)" }}>
                   Explore Rooms
                 </Link>
               </div>
@@ -81,9 +112,19 @@ export default function Index() {
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {rooms.map((room, i) => (
+            {loading ? (
+              [0, 1, 2].map(i => (
+                <div key={i} className="rounded-2xl overflow-hidden bg-card shadow-card animate-pulse">
+                  <div className="aspect-[4/3] bg-muted" />
+                  <div className="p-6 space-y-3">
+                    <div className="h-4 bg-muted rounded w-3/4" />
+                    <div className="h-4 bg-muted rounded w-1/2" />
+                  </div>
+                </div>
+              ))
+            ) : rooms.map((room, i) => (
               <motion.div
-                key={room.id}
+                key={room.roomId}
                 initial={{ opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -92,27 +133,42 @@ export default function Index() {
               >
                 <div className="relative overflow-hidden aspect-[4/3]">
                   <img
-                    src={room.image}
-                    alt={room.name}
+                    src={room.imageUrl || roomImage[room.type]}
+                    alt={room.type}
+                    onError={(e) => { (e.target as HTMLImageElement).src = roomImage[room.type]; }}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />
-                  <div className="absolute top-4 left-4">
+                  <div className="absolute top-4 left-4 flex gap-2">
                     <span className="px-3 py-1 text-xs font-body font-medium bg-accent text-accent-foreground rounded-full">
                       {room.type}
+                    </span>
+                    <span className={`px-3 py-1 text-xs font-body font-medium rounded-full ${
+                      room.availability ? "bg-emerald-500/90 text-emerald-50" : "bg-red-500/90 text-red-50"
+                    }`}>
+                      {room.availability ? "Available" : "Occupied"}
                     </span>
                   </div>
                 </div>
                 <div className="p-6">
-                  <h3 className="text-xl font-display font-semibold text-foreground">{room.name}</h3>
+                  <h3 className="text-xl font-display font-semibold text-foreground">
+                    {typeLabel[room.type] ?? room.type}
+                  </h3>
+                  {room.capacity && (
+                    <div className="flex items-center gap-1.5 mt-1.5 text-muted-foreground">
+                      <Users size={13} />
+                      <span className="text-xs font-body">{room.capacity} Guests</span>
+                    </div>
+                  )}
+                  <p className="text-sm font-body text-muted-foreground mt-2 line-clamp-2">
+                    {room.description || typeDesc[room.type] || "A comfortable and well-appointed room for your stay."}
+                  </p>
                   <div className="mt-4 flex items-end justify-between">
                     <div>
-                      <span className="text-2xl font-display font-bold text-accent">${room.price}</span>
+                      <span className="text-2xl font-display font-bold text-accent">₹{room.price}</span>
                       <span className="text-sm text-muted-foreground font-body"> / night</span>
                     </div>
-                    <Link
-                      to="/login"
-                      className="text-sm font-body font-medium text-ocean hover:text-accent transition-colors"
-                    >
+                    <Link to="/login"
+                      className="text-sm font-body font-medium text-ocean hover:text-accent transition-colors">
                       View Details →
                     </Link>
                   </div>
@@ -132,7 +188,7 @@ export default function Index() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <p className="text-accent font-body text-sm uppercase tracking-[0.2em] mb-3">Why StaySphere</p>
+            <p className="text-accent font-body text-sm uppercase tracking-[0.2em] mb-3">Why Hotel Whitmore Stays</p>
             <h2 className="text-3xl md:text-4xl font-display font-semibold text-foreground">
               Smart Hospitality, Redefined
             </h2>

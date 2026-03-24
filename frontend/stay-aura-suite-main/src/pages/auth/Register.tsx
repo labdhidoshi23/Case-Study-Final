@@ -22,7 +22,12 @@ export default function Register() {
       await authApi.register(form);
       navigate("/login");
     } catch (err: any) {
-      setError(err.response?.data?.error ?? "Registration failed. Please try again.");
+      setError(
+        err.response?.data?.error ??
+        (typeof err.response?.data === 'object'
+          ? Object.values(err.response.data).join(', ')
+          : "Registration failed. Please try again.")
+      );
     } finally {
       setLoading(false);
     }

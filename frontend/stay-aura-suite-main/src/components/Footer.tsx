@@ -6,7 +6,7 @@ export function Footer() {
       <div className="container mx-auto px-6 py-16">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
           <div className="space-y-4">
-            <h3 className="text-2xl font-display font-bold text-accent">StaySphere</h3>
+            <h3 className="text-2xl font-display font-bold text-accent">Hotel Whitmore Stays</h3>
             <p className="text-sm font-body leading-relaxed">
               Experience luxury hospitality with smart hotel management. Your comfort, our priority.
             </p>
@@ -34,7 +34,7 @@ export function Footer() {
             <h4 className="text-sm font-body font-semibold text-primary-foreground uppercase tracking-wider">Contact</h4>
             <div className="space-y-2 text-sm font-body">
               <p>123 Luxury Avenue</p>
-              <p>contact@staysphere.com</p>
+              <p>contact@hotelwhitmorestays.com</p>
               <p>+1 (555) 000-0000</p>
             </div>
           </div>
@@ -42,7 +42,7 @@ export function Footer() {
 
         <div className="mt-12 pt-8 border-t border-primary-foreground/10 text-center">
           <p className="text-xs font-body text-primary-foreground/50">
-            © 2026 StaySphere. All rights reserved.
+            © 2026 Hotel Whitmore Stays. All rights reserved.
           </p>
         </div>
       </div>
